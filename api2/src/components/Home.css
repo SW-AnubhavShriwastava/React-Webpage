@@ -1,0 +1,18 @@
+/* Home.css */
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f0f2f5;
+  }
+  
+  .MuiPaper-root {
+    transition: transform 0.2s ease-in-out;
+  }
+  
+  .MuiPaper-root:hover {
+    transform: scale(1.05);
+  }
+  
+  .MuiButton-root {
+    text-transform: none;
+  }
+  
