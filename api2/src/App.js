@@ -1,30 +1,51 @@
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import React from 'react';
+import { 
+  createBrowserRouter, 
+  RouterProvider,
+  createRoutesFromElements,
+  Route,
+  Navigate
+} from 'react-router-dom';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import ForgotUsername from './pages/ForgotUsername';
 import ForgotPassword from './pages/ForgotPassword';
+import ForgotUsername from './pages/ForgotUsername';
+import ResetPassword from './pages/ResetPassword';
 import Home from './components/Home';
 import ApiDetail from './pages/ApiDetail';
-import PrivateRoute from './components/PrivateRoute'; // Import the PrivateRoute component
+import PrivateRoute from './components/PrivateRoute';
+
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <>
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/forgot-username" element={<ForgotUsername />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
+      <Route path="/" element={<Navigate to="/login" />} />
+      
+      <Route element={<PrivateRoute />}>
+        <Route path="/home" element={<Home />} />
+        <Route path="/api/:apiName" element={<ApiDetail />} />
+        <Route path="/api-documentation" element={<div>API Documentation</div>} />
+        <Route path="/api-pricing" element={<div>API Pricing</div>} />
+        <Route path="/buy-credits" element={<div>Buy Credits</div>} />
+        <Route path="/subscriptions" element={<div>My Subscriptions</div>} />
+        <Route path="/usage-insights" element={<div>Usage Insights</div>} />
+      </Route>
+    </>
+  ),
+  {
+    future: {
+      v7_startTransition: true,
+      v7_relativeSplatPath: true
+    }
+  }
+);
 
 function App() {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/forgot-username" element={<ForgotUsername />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        
-        {/* Protected Route */}
-        <Route path="/dashboard" element={<PrivateRoute />}>
-          <Route path="" element={<Home />} /> {/* Renders Home component only if authenticated */}
-        </Route>
-
-        <Route path="/api/:apiName" element={<ApiDetail />} /> {/* API Detail accessible after login */}
-      </Routes>
-    </Router>
-  );
+  return <RouterProvider router={router} />;
 }
 
 export default App;

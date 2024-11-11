@@ -12,13 +12,19 @@ function ForgotUsername() {
   const handleForgotUsername = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/forgot-username', { email });
-      setMessage(response.data.message || 'Username retrieval successful! Redirecting to login...');
+      const response = await axios.post('http://localhost:5000/api/auth/forgot-username', { 
+        email 
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      setMessage(response.data.message || 'Username sent to your email!');
       setIsSuccess(true);
-
-      // Redirect to login after 5 seconds
       setTimeout(() => navigate('/'), 5000);
     } catch (error) {
+      console.error('Error:', error.response || error);
       setMessage(error.response?.data?.message || 'Failed to retrieve username, please try again.');
       setIsSuccess(false);
     }

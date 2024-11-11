@@ -6,16 +6,16 @@ require('dotenv').config();
 
 // Centralized Nodemailer transporter configuration
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT, 10),
-    secure: process.env.SMTP_PORT === '465', // true for 465, false for 587
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-    debug: false, // Enable debug output
-    logger: false, // Log to console for debugging
-  });
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT, 10),
+  secure: process.env.SMTP_PORT === '465',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+  debug: false,
+  logger: false,
+});
 
 // Verify SMTP connection on startup
 transporter.verify((error, success) => {
@@ -26,55 +26,7 @@ transporter.verify((error, success) => {
   }
 });
 
-// Forgot Username
-exports.forgotUsername = async (req, res) => {
-  const { email } = req.body;
-
-  try {
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: 'No account found with this email.' });
-    }
-
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: 'Your Username Retrieval',
-      html: `
-        <div style="font-family: Arial, sans-serif; color: #333;">
-          <table style="width: 100%; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-            <tr style="background-color: #1976d2;">
-              <td style="padding: 20px; text-align: center;">
-                <img src="https://raw.githubusercontent.com/SW-AnubhavShriwastava/localhost/main/logo.png" alt="Company Logo" style="width: 120px; height: auto;">
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 20px;">
-                <h2 style="color: #1976d2; text-align: center;">Your Username Retrieval</h2>
-                <p>Hello ${user.firstName},</p>
-                <p>Your username is: <strong>${user.username}</strong></p>
-                <p>Thank you,<br>Team SwarupAI</p>
-              </td>
-            </tr>
-            <tr style="background-color: #f7f7f7;">
-              <td style="padding: 10px; text-align: center; color: #555;">
-                <small>&copy; ${new Date().getFullYear()} SwarupAI. All rights reserved.</small>
-              </td>
-            </tr>
-          </table>
-        </div>
-      `,
-    };
-
-    await transporter.sendMail(mailOptions);
-    res.status(200).json({ message: 'Your username has been sent to your email address.' });
-  } catch (error) {
-    console.error('Error during username retrieval:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-// User Signup
+// Export functions directly
 exports.signup = async (req, res) => {
   const { firstName, lastName, phone, email, username, password } = req.body;
 
@@ -85,7 +37,6 @@ exports.signup = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const newUser = new User({
       firstName,
       lastName,
@@ -105,7 +56,6 @@ exports.signup = async (req, res) => {
   }
 };
 
-// User Login
 exports.login = async (req, res) => {
   const { usernameOrEmail, password } = req.body;
 
@@ -124,14 +74,23 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token, message: 'Logged in successfully', credits: user.credits });
+    res.json({ 
+      token, 
+      message: 'Logged in successfully',
+      user: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        username: user.username,
+        credits: user.credits
+      }
+    });
   } catch (error) {
     console.error('Error during login:', error.message);
     res.status(500).json({ message: `Server error: ${error.message}` });
   }
 };
 
-// Forgot Password
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
 
@@ -170,11 +129,6 @@ exports.forgotPassword = async (req, res) => {
                 <p>Thank you,<br>Support Team</p>
               </td>
             </tr>
-            <tr style="background-color: #f7f7f7;">
-              <td style="padding: 10px; text-align: center; color: #555;">
-                <small>&copy; ${new Date().getFullYear()} SwarupAI. All rights reserved.</small>
-              </td>
-            </tr>
           </table>
         </div>
       `,
@@ -183,7 +137,109 @@ exports.forgotPassword = async (req, res) => {
     await transporter.sendMail(mailOptions);
     res.status(200).json({ message: 'Password reset email sent successfully.' });
   } catch (error) {
-    console.error('Error during password reset:', error.message);
-    res.status(500).json({ message: `Server error: ${error.message}` });
+    console.error('Error during password reset:', error);
+    res.status(500).json({ message: 'Failed to send reset email. Please try again.' });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  console.log('Reset password endpoint hit');
+  console.log('Request body:', req.body);
+  
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    console.log('Missing required fields');
+    return res.status(400).json({ message: 'Token and new password are required' });
+  }
+
+  try {
+    console.log('Verifying token...');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Token decoded:', { id: decoded.id });
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      console.log('User not found for id:', decoded.id);
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+    console.log('Password updated successfully');
+
+    res.status(200).json({ message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Password reset link has expired' });
+    }
+    res.status(500).json({ message: 'Error resetting password' });
+  }
+};
+
+exports.getMe = async (req, res) => {
+  try {
+    const user = req.user;
+    res.json({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      username: user.username,
+      credits: user.credits
+    });
+  } catch (error) {
+    console.error('Error in getMe:', error);
+    res.status(500).json({ message: 'Error fetching user details' });
+  }
+};
+
+exports.forgotUsername = async (req, res) => {
+  const { email } = req.body;
+  console.log('Forgot username request for email:', email);
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      console.log('No user found with email:', email);
+      return res.status(404).json({ message: 'No account found with this email.' });
+    }
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: 'Your Username Retrieval',
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #333;">
+          <table style="width: 100%; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+            <tr style="background-color: #1976d2;">
+              <td style="padding: 20px; text-align: center;">
+                <img src="https://raw.githubusercontent.com/SW-AnubhavShriwastava/localhost/main/logo2_2.png" alt="Company Logo" style="width: 120px; height: auto;">
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 20px;">
+                <h2 style="color: #1976d2; text-align: center;">Your Username Retrieval</h2>
+                <p>Hello ${user.firstName},</p>
+                <p>Your username is: <strong>${user.username}</strong></p>
+                <p>You can use this username to log in to your account.</p>
+                <p>If you did not request this information, please ignore this email.</p>
+                <p>Thank you,<br>Support Team</p>
+              </td>
+            </tr>
+          </table>
+        </div>
+      `,
+    };
+
+    console.log('Sending email to:', user.email);
+    await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully');
+
+    res.status(200).json({ message: 'Your username has been sent to your email address.' });
+  } catch (error) {
+    console.error('Error during username retrieval:', error);
+    res.status(500).json({ message: 'Failed to send username. Please try again.' });
   }
 };

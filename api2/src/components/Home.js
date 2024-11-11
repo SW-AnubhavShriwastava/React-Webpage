@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { categories } from '../data/categories';
 import { apis } from '../data/apis';
 import { Box, Typography, Paper, TextField, Grid, Button } from '@mui/material';
-import axiosInstance from '../axiosInstance'; // Import the axios instance for authenticated requests
 import './Home.css';
 
 function Home() {
@@ -66,15 +65,14 @@ function Home() {
           {filteredApis.map((api) => (
             <Grid item xs={12} sm={6} md={4} key={api.title}>
               <Button
-                component="a"
-                href={`/api/${api.title.replace(/\s+/g, '-').toLowerCase()}`}
-                style={{ textDecoration: 'none' }}
+                onClick={() => navigate(`/api/${api.title.replace(/\s+/g, '-').toLowerCase()}`)}
+                style={{ textDecoration: 'none', width: '100%' }}
               >
                 <Paper
                   elevation={3}
                   sx={{
                     padding: 2,
-                    height: '125px', // Adjust card height
+                    height: '125px',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',

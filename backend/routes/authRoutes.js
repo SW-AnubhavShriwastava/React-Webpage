@@ -1,20 +1,28 @@
 const express = require('express');
-const {
-  signup,
-  login,
-  forgotUsername,
-  forgotPassword,
-} = require('../controllers/authController');
-
 const router = express.Router();
+const authController = require('../controllers/authController');
 const verifyToken = require('../middleware/authMiddleware');
-// const { dashboardController } = require('../controllers/dashboardController');
 
-router.post('/signup', signup);
-router.post('/login', login);
-router.post('/forgot-username', forgotUsername); // Add forgot-username route
-router.post('/forgot-password', forgotPassword); // Add forgot-password route
-// router.get('/dashboard', verifyToken, dashboardController);
+// Debug log for route registration
+console.log('Registering auth routes...');
+
+// Public routes
+router.post('/signup', authController.signup);
+router.post('/login', authController.login);
+router.post('/forgot-username', authController.forgotUsername);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+
+// Protected routes
+router.get('/me', verifyToken, authController.getMe);
+
+// Debug log registered routes
+console.log('Routes registered:');
+router.stack.forEach((r) => {
+  if (r.route && r.route.path) {
+    console.log(`${r.route.stack[0].method.toUpperCase()} /api/auth${r.route.path}`);
+  }
+});
 
 module.exports = router;
 

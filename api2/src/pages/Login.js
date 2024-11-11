@@ -10,26 +10,43 @@ function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if the user is already authenticated
     const token = localStorage.getItem('token');
-    if (token) {
-      navigate('/dashboard'); // Redirect to dashboard if already logged in
+    const userDetails = localStorage.getItem('userDetails');
+    if (token && userDetails) {
+      navigate('/home');
     }
   }, [navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setMessage(''); // Clear previous messages
+    
     try {
+      console.log('Sending login request with:', { usernameOrEmail, password });
+      
       const response = await axios.post('http://localhost:5000/api/auth/login', {
         usernameOrEmail,
         password,
       });
 
-      localStorage.setItem('token', response.data.token);
-      setMessage('Login successful! Redirecting...');
-      setTimeout(() => navigate('/dashboard'), 2000); // Redirect after 2 seconds
+      console.log('Login response:', response.data);
+
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        if (response.data.user) {
+          localStorage.setItem('userDetails', JSON.stringify(response.data.user));
+        }
+        setMessage('Login successful! Redirecting...');
+        setTimeout(() => navigate('/home'), 1000);
+      } else {
+        setMessage('Invalid response from server: No token received');
+      }
     } catch (error) {
-      setMessage(error.response?.data?.message || 'Login failed, please try again.');
+      console.error('Login error:', error);
+      setMessage(
+        error.response?.data?.message || 
+        'Login failed. Please check your credentials and try again.'
+      );
     }
   };
 
@@ -38,7 +55,14 @@ function Login() {
       <Paper elevation={3} sx={{ padding: 4, width: '100%', maxWidth: 400 }}>
         <Box textAlign="center" mb={2}>
           <Typography variant="h4">Login</Typography>
-          {message && <Typography color="error" mt={1}>{message}</Typography>}
+          {message && (
+            <Typography 
+              color={message.includes('successful') ? 'primary' : 'error'} 
+              mt={1}
+            >
+              {message}
+            </Typography>
+          )}
         </Box>
         <form onSubmit={handleLogin}>
           <TextField
@@ -58,7 +82,13 @@ function Login() {
             required
             margin="normal"
           />
-          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ marginTop: 2 }}>
+          <Button 
+            type="submit" 
+            variant="contained" 
+            color="primary" 
+            fullWidth 
+            sx={{ marginTop: 2 }}
+          >
             Login
           </Button>
         </form>
