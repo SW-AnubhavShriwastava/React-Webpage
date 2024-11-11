@@ -14,6 +14,7 @@ import ResetPassword from './pages/ResetPassword';
 import Home from './components/Home';
 import ApiDetail from './pages/ApiDetail';
 import PrivateRoute from './components/PrivateRoute';
+import TokenManagement from './pages/TokenManagement';
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -33,6 +34,7 @@ const router = createBrowserRouter(
         <Route path="/buy-credits" element={<div>Buy Credits</div>} />
         <Route path="/subscriptions" element={<div>My Subscriptions</div>} />
         <Route path="/usage-insights" element={<div>Usage Insights</div>} />
+        <Route path="/token-management" element={<TokenManagement />} />
       </Route>
     </>
   ),

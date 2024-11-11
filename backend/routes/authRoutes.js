@@ -16,6 +16,13 @@ router.post('/reset-password', authController.resetPassword);
 // Protected routes
 router.get('/me', verifyToken, authController.getMe);
 
+// Token management routes
+router.route('/tokens')
+  .get(verifyToken, authController.getTokens)
+  .post(verifyToken, authController.createToken);
+
+router.delete('/tokens/:tokenId', verifyToken, authController.deleteToken);
+
 // Debug log registered routes
 console.log('Routes registered:');
 router.stack.forEach((r) => {

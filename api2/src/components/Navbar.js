@@ -11,7 +11,7 @@ import {
   Avatar,
   Divider,
 } from '@mui/material';
-import axios from 'axios';
+import axiosInstance from '../axiosInstance';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -33,10 +33,7 @@ const Navbar = () => {
         return;
       }
 
-      const response = await axios.get('http://localhost:5000/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
+      const response = await axiosInstance.get('/auth/me');
       if (response.data) {
         setUserDetails(response.data);
         localStorage.setItem('userDetails', JSON.stringify(response.data));
@@ -51,11 +48,55 @@ const Navbar = () => {
     }
   }, [navigate]);
 
+  // Fetch user details on mount and when localStorage changes
   useEffect(() => {
-    if (!userDetails) {
-      fetchUserDetails();
-    }
-  }, [fetchUserDetails, userDetails]);
+    fetchUserDetails();
+
+    // Add event listener for storage changes
+    const handleStorageChange = (e) => {
+      if (e.key === 'userDetails' || e.key === 'token') {
+        fetchUserDetails();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // Set up periodic refresh (every 30 seconds)
+    const refreshInterval = setInterval(fetchUserDetails, 30000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(refreshInterval);
+    };
+  }, [fetchUserDetails]);
+
+  // Add event listener for visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchUserDetails();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchUserDetails]);
+
+  // Refresh user details after API calls
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      if (args[0].includes('/api/v1/')) {
+        fetchUserDetails();
+      }
+      return response;
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [fetchUserDetails]);
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -79,7 +120,7 @@ const Navbar = () => {
   };
 
   if (!userDetails) {
-    return null; // Don't render navbar until user details are loaded
+    return null;
   }
 
   return (
@@ -187,6 +228,25 @@ const Navbar = () => {
             onClick={() => navigate('/buy-credits')}
           >
             Buy Credits
+          </Typography>
+          <Typography 
+            variant="body1" 
+            sx={{ 
+              cursor: 'pointer', 
+              color: 'white',
+              fontWeight: 500,
+              padding: '8px 16px',
+              borderRadius: '4px',
+              transition: 'background-color 0.2s ease',
+              transform: 'none !important',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                transform: 'none !important'
+              }
+            }}
+            onClick={() => navigate('/token-management')}
+          >
+            Token Management
           </Typography>
         </Box>
 

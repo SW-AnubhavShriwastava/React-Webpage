@@ -2,6 +2,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const User = require('../models/User');
+const Token = require('../models/Token');
+const crypto = require('crypto');
 require('dotenv').config();
 
 // Centralized Nodemailer transporter configuration
@@ -241,5 +243,79 @@ exports.forgotUsername = async (req, res) => {
   } catch (error) {
     console.error('Error during username retrieval:', error);
     res.status(500).json({ message: 'Failed to send username. Please try again.' });
+  }
+};
+
+// Generate a new token
+exports.createToken = async (req, res) => {
+  try {
+    const { name } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ message: 'Token name is required' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    const newToken = new Token({
+      userId: req.user._id,
+      name,
+      token,
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year expiry
+    });
+
+    await newToken.save();
+    console.log('Token created:', newToken);
+    res.status(201).json(newToken);
+  } catch (error) {
+    console.error('Error creating token:', error);
+    res.status(500).json({ message: 'Error creating token: ' + error.message });
+  }
+};
+
+// Get all tokens for a user
+exports.getTokens = async (req, res) => {
+  try {
+    console.log('Fetching tokens for user:', req.user._id);
+    const tokens = await Token.find({ userId: req.user._id });
+    console.log('Found tokens:', tokens.length);
+    res.json(tokens);
+  } catch (error) {
+    console.error('Error fetching tokens:', error);
+    res.status(500).json({ message: 'Error fetching tokens: ' + error.message });
+  }
+};
+
+// Delete a token
+exports.deleteToken = async (req, res) => {
+  try {
+    const token = await Token.findOne({
+      _id: req.params.tokenId,
+      userId: req.user._id
+    });
+
+    if (!token) {
+      return res.status(404).json({ message: 'Token not found' });
+    }
+
+    await token.remove();
+    res.json({ message: 'Token deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting token:', error);
+    res.status(500).json({ message: 'Error deleting token' });
+  }
+};
+
+// Update token usage
+exports.updateTokenUsage = async (tokenString) => {
+  try {
+    const token = await Token.findOne({ token: tokenString });
+    if (token) {
+      token.lastUsed = new Date();
+      token.usageCount += 1;
+      await token.save();
+    }
+  } catch (error) {
+    console.error('Error updating token usage:', error);
   }
 };

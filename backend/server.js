@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
+const apiRoutes = require('./routes/apiRoutes');
 
 const app = express();
 
@@ -13,8 +14,18 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
+// Add this before your routes
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
+// Add this after your middleware setup
+app.use(express.urlencoded({ extended: true }));
+
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/v1', apiRoutes);
 
 // Debug route registration
 app.get('/debug/routes', (req, res) => {
@@ -41,8 +52,8 @@ app.get('/debug/routes', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something broke!', error: err.message });
+  console.error('Error:', err);
+  res.status(500).json({ message: 'Internal server error', error: err.message });
 });
 
 // 404 handler
