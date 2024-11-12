@@ -70,11 +70,23 @@ function TokenManagement() {
 
   const handleDeleteToken = async (tokenId) => {
     try {
-      await axiosInstance.delete(`/auth/tokens/${tokenId}`);
-      setTokens(tokens.filter(token => token._id !== tokenId));
-      showMessage('Token deleted successfully', 'success');
+      console.log('Attempting to delete token:', tokenId);
+      
+      const response = await axiosInstance.delete(`/auth/tokens/${tokenId}`);
+      console.log('Delete response:', response);
+      
+      if (response.data.success) {
+        setTokens(prevTokens => prevTokens.filter(token => token._id !== tokenId));
+        showMessage('Token deleted successfully', 'success');
+      } else {
+        showMessage(response.data.message || 'Error deleting token', 'error');
+      }
     } catch (error) {
-      showMessage('Error deleting token', 'error');
+      console.error('Error deleting token:', error);
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          'Error deleting token. Please try again.';
+      showMessage(errorMessage, 'error');
     }
   };
 

@@ -22,9 +22,10 @@ function Login() {
     setMessage(''); // Clear previous messages
     
     try {
+      const BACKEND_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       console.log('Sending login request with:', { usernameOrEmail, password });
       
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      const response = await axios.post(`${BACKEND_URL}/api/auth/login`, {
         usernameOrEmail,
         password,
       });

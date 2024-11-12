@@ -289,20 +289,47 @@ exports.getTokens = async (req, res) => {
 // Delete a token
 exports.deleteToken = async (req, res) => {
   try {
+    console.log('Attempting to delete token with ID:', req.params.tokenId);
+    console.log('User ID:', req.user._id);
+
+    // First find the token to ensure it belongs to the user
     const token = await Token.findOne({
       _id: req.params.tokenId,
       userId: req.user._id
     });
 
     if (!token) {
-      return res.status(404).json({ message: 'Token not found' });
+      console.log('Token not found or does not belong to user');
+      return res.status(404).json({
+        success: false,
+        message: 'Token not found'
+      });
     }
 
-    await token.remove();
-    res.json({ message: 'Token deleted successfully' });
+    // Use findByIdAndDelete instead of deleteOne
+    const deletedToken = await Token.findByIdAndDelete(req.params.tokenId);
+    
+    if (!deletedToken) {
+      console.log('Token deletion failed');
+      return res.status(404).json({
+        success: false,
+        message: 'Token deletion failed'
+      });
+    }
+
+    console.log('Token deleted successfully:', deletedToken);
+    
+    res.json({
+      success: true,
+      message: 'Token deleted successfully'
+    });
   } catch (error) {
-    console.error('Error deleting token:', error);
-    res.status(500).json({ message: 'Error deleting token' });
+    console.error('Error in deleteToken:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting token',
+      error: error.message
+    });
   }
 };
 

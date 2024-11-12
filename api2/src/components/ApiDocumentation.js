@@ -184,9 +184,6 @@ function ApiDocumentation({ doc }) {
     }
   };
 
-  // Check if the API requires file upload
-  const isFileUploadApi = doc.requestBody?.type === 'multipart/form-data';
-
   if (!doc) return null;
 
   return (

@@ -4,6 +4,7 @@ const multer = require('multer');
 const apiController = require('../controllers/apiController');
 const idCardController = require('../controllers/idCardController');
 const verifyToken = require('../middleware/authMiddleware');
+const authController = require('../controllers/authController');
 
 // Configure multer for memory storage
 const upload = multer({ 
@@ -28,6 +29,9 @@ router.post('/document-identification',
 // Analytics endpoints
 router.get('/analytics', apiController.getApiAnalytics);
 router.get('/analytics/:apiId', apiController.getApiStats);
+
+// Token deletion route
+router.delete('/auth/tokens/:tokenId', verifyToken, authController.deleteToken);
 
 // Debug log registered routes
 console.log('API Routes registered:');
