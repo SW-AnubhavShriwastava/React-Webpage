@@ -26,6 +26,11 @@ router.post('/document-identification',
   idCardController.documentIdentification
 );
 
+router.post('/pan-signature-extraction',
+  upload.single('image'),
+  idCardController.panSignatureExtraction
+);
+
 // Analytics endpoints
 router.get('/analytics', apiController.getApiAnalytics);
 router.get('/analytics/:apiId', apiController.getApiStats);

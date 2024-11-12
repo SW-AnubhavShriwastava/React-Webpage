@@ -27,6 +27,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import QueryStatsIcon from '@mui/icons-material/QueryStats';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import DownloadIcon from '@mui/icons-material/Download';
 import axiosInstance from '../axiosInstance';
 
 function ApiDocumentation({ doc }) {
@@ -153,27 +154,38 @@ function ApiDocumentation({ doc }) {
 
     try {
       let response;
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${selectedToken}`,
+        },
+        responseType: doc.response?.success?.contentType === 'image/png' ? 'blob' : 'json'
+      };
+
       if (doc.requestBody?.type === 'multipart/form-data') {
-        // Handle file upload API
         const formData = new FormData();
         formData.append('image', selectedFile);
-        response = await axiosInstance.post(`/v1${doc.endpoint}`, formData, {
-          headers: {
-            'Authorization': `Bearer ${selectedToken}`,
-            'Content-Type': 'multipart/form-data'
-          }
+        config.headers['Content-Type'] = 'multipart/form-data';
+        response = await axiosInstance.post(`/v1${doc.endpoint}`, formData, config);
+      } else {
+        config.headers['Content-Type'] = 'application/json';
+        response = await axiosInstance.post(`/v1${doc.endpoint}`, {}, config);
+      }
+
+      // Handle image response
+      if (doc.response?.success?.contentType === 'image/png') {
+        const imageUrl = URL.createObjectURL(response.data);
+        setTestResponse({
+          type: 'image',
+          url: imageUrl,
+          blob: response.data
         });
       } else {
-        // Handle simple API calls (like welcome API)
-        response = await axiosInstance.post(`/v1${doc.endpoint}`, {}, {
-          headers: {
-            'Authorization': `Bearer ${selectedToken}`,
-            'Content-Type': 'application/json'
-          }
+        setTestResponse({
+          type: 'json',
+          data: response.data
         });
       }
 
-      setTestResponse(response.data);
       showMessage('API call successful!', 'success');
     } catch (error) {
       console.error('API Test Error:', error);
@@ -182,6 +194,17 @@ function ApiDocumentation({ doc }) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDownload = () => {
+    if (!testResponse || testResponse.type !== 'image') return;
+    
+    const link = document.createElement('a');
+    link.href = testResponse.url;
+    link.download = 'signature.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (!doc) return null;
@@ -492,19 +515,57 @@ function ApiDocumentation({ doc }) {
             <Box>
               <Typography variant="h6" gutterBottom>Response:</Typography>
               <Box position="relative">
-                <Button
-                  size="small"
-                  startIcon={<ContentCopyIcon />}
-                  sx={{ position: 'absolute', right: 8, top: 8, zIndex: 1 }}
-                  onClick={() => copyToClipboard(JSON.stringify(testResponse, null, 2))}
-                >
-                  Copy
-                </Button>
-                <Box sx={{ position: 'relative', mt: 2 }}>
-                  <SyntaxHighlighter language="json" style={tomorrow}>
-                    {JSON.stringify(testResponse, null, 2)}
-                  </SyntaxHighlighter>
-                </Box>
+                {testResponse.type === 'image' ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Box 
+                      sx={{ 
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '4px',
+                        padding: '16px',
+                        backgroundColor: '#f5f5f5',
+                        width: 'fit-content'
+                      }}
+                    >
+                      <img 
+                        src={testResponse.url} 
+                        alt="API Response"
+                        style={{ 
+                          maxWidth: '300px',
+                          maxHeight: '100px',
+                          objectFit: 'contain',
+                          display: 'block'
+                        }} 
+                      />
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<DownloadIcon />}
+                        onClick={handleDownload}
+                        size="small"
+                      >
+                        Download Signature
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : (
+                  <>
+                    <Button
+                      size="small"
+                      startIcon={<ContentCopyIcon />}
+                      sx={{ position: 'absolute', right: 8, top: 8, zIndex: 1 }}
+                      onClick={() => copyToClipboard(JSON.stringify(testResponse.data, null, 2))}
+                    >
+                      Copy
+                    </Button>
+                    <Box sx={{ position: 'relative', mt: 2 }}>
+                      <SyntaxHighlighter language="json" style={tomorrow}>
+                        {JSON.stringify(testResponse.data, null, 2)}
+                      </SyntaxHighlighter>
+                    </Box>
+                  </>
+                )}
               </Box>
             </Box>
           )}

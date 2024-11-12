@@ -4,9 +4,10 @@ const { getApiDocumentation } = require('../../api2/src/data/documentation');
 
 // Define active APIs globally
 const ACTIVE_APIS = {
-  'swaroop-welcome': true,
-  'document-identification': true
-};
+    'swaroop-welcome': true,
+    'document-identification': true,
+    'pan-signature-extraction': true  // Add this line
+  };
 
 // Welcome API endpoint
 exports.welcomeApi = async (req, res) => {
