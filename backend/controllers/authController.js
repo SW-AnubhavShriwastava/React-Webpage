@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const User = require('../models/User');
 const Token = require('../models/Token');
+const Transaction = require('../models/Transaction');
 const crypto = require('crypto');
 require('dotenv').config();
 
@@ -27,6 +28,34 @@ transporter.verify((error, success) => {
     console.log("SMTP Server is ready to send emails:", success);
   }
 });
+
+// Simple in-memory cache
+const cache = new Map();
+const CACHE_TTL = 300000; // 5 minutes in milliseconds
+
+// Function to set cache with TTL
+const setCache = (key, value) => {
+  cache.set(key, {
+    value,
+    timestamp: Date.now()
+  });
+  // Cleanup after TTL
+  setTimeout(() => cache.delete(key), CACHE_TTL);
+};
+
+// Function to get from cache
+const getCache = (key) => {
+  const data = cache.get(key);
+  if (!data) return null;
+  
+  // Check if cache has expired
+  if (Date.now() - data.timestamp > CACHE_TTL) {
+    cache.delete(key);
+    return null;
+  }
+  
+  return data.value;
+};
 
 // Export functions directly
 exports.signup = async (req, res) => {
@@ -344,5 +373,66 @@ exports.updateTokenUsage = async (tokenString) => {
     }
   } catch (error) {
     console.error('Error updating token usage:', error);
+  }
+};
+
+exports.getTransactions = async (req, res) => {
+  try {
+    const {
+      page = 0,
+      limit = 10,
+      type,
+      sortBy = 'timestamp',
+      sortOrder = 'desc',
+      startDate,
+      endDate
+    } = req.query;
+
+    const cacheKey = `transactions:${req.user._id}:${page}:${limit}:${type}:${sortBy}:${sortOrder}:${startDate}:${endDate}`;
+    
+    // Try to get from cache
+    const cachedData = getCache(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
+    const query = { userId: req.user._id };
+
+    // Add filters
+    if (type && type !== 'ALL') {
+      query.type = type;
+    }
+    if (startDate || endDate) {
+      query.timestamp = {};
+      if (startDate) query.timestamp.$gte = new Date(startDate);
+      if (endDate) query.timestamp.$lte = new Date(endDate);
+    }
+
+    // Get total count for pagination
+    const total = await Transaction.countDocuments(query);
+
+    // Get transactions with pagination and sorting
+    const transactions = await Transaction.find(query)
+      .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
+      .skip(page * limit)
+      .limit(parseInt(limit))
+      .lean()
+      .exec();
+
+    const response = {
+      transactions,
+      total,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / limit)
+    };
+
+    // Cache the response
+    setCache(cacheKey, response);
+
+    res.json(response);
+
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+    res.status(500).json({ message: 'Error fetching transactions' });
   }
 };

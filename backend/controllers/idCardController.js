@@ -2,23 +2,76 @@ const axios = require('axios');
 const FormData = require('form-data');
 const User = require('../models/User');
 const ApiLog = require('../models/ApiLog');
+const Transaction = require('../models/Transaction');
 const { getApiDocumentation } = require('../../api2/src/data/documentation');
+const mongoose = require('mongoose');
 
 const CLOUD_RUN_URL = 'https://api-application-140313483314.asia-south1.run.app';
+
+// Helper function to create transaction record with retry logic
+const createTransactionWithRetry = async (userId, apiName, creditCost, currentCredits, maxRetries = 3) => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const transaction = new Transaction({
+        userId,
+        type: 'DEBIT',
+        amount: creditCost,
+        description: `API Usage: ${apiName}`,
+        balance: currentCredits,
+        source: 'API_USAGE',
+        metadata: {
+          apiName
+        }
+      });
+
+      const savedTransaction = await transaction.save();
+      console.log('Transaction created successfully:', savedTransaction);
+      return savedTransaction;
+    } catch (error) {
+      console.error(`Transaction creation attempt ${i + 1} failed:`, error);
+      if (i === maxRetries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+    }
+  }
+};
+
+// Common function to handle credit deduction and transaction creation
+const handleCreditsAndTransaction = async (user, apiName, creditCost) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Update user credits
+    user.credits -= creditCost;
+    await user.save({ session });
+
+    // Create transaction record
+    const transaction = await createTransactionWithRetry(
+      user._id,
+      apiName,
+      creditCost,
+      user.credits
+    );
+
+    await session.commitTransaction();
+    return { updatedCredits: user.credits, transaction };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
 
 exports.documentIdentification = async (req, res) => {
   const startTime = Date.now();
   const apiName = 'document-identification';
 
   try {
-    // Get user from middleware
     const user = await User.findById(req.user._id);
-    
-    // Get API documentation to check credit cost
     const apiDoc = getApiDocumentation('id_card', apiName);
     const creditCost = apiDoc?.pricing?.credits || 2;
 
-    // Check if user has enough credits
     if (user.credits < creditCost) {
       return res.status(403).json({
         success: false,
@@ -26,7 +79,6 @@ exports.documentIdentification = async (req, res) => {
       });
     }
 
-    // Check if file exists in request
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -34,14 +86,12 @@ exports.documentIdentification = async (req, res) => {
       });
     }
 
-    // Create FormData for Cloud Run request
     const formData = new FormData();
     formData.append('image', req.file.buffer, {
       filename: req.file.originalname,
       contentType: req.file.mimetype
     });
 
-    // Forward request to Cloud Run
     const cloudRunResponse = await axios.post(
       `${CLOUD_RUN_URL}/document-identification`,
       formData,
@@ -52,11 +102,10 @@ exports.documentIdentification = async (req, res) => {
       }
     );
 
-    // Deduct credits
-    user.credits -= creditCost;
-    await user.save();
+    // Handle credits and create transaction
+    const remainingCredits = await handleCreditsAndTransaction(user, apiName, creditCost);
 
-    // Log the API call
+    // Log API call
     const apiLog = new ApiLog({
       userId: user._id,
       apiName,
@@ -70,30 +119,14 @@ exports.documentIdentification = async (req, res) => {
     });
     await apiLog.save();
 
-    // Send response
-    res.status(200).json({
+    res.json({
       success: true,
       data: cloudRunResponse.data,
-      creditsRemaining: user.credits
+      creditsRemaining: remainingCredits
     });
 
   } catch (error) {
     console.error('Document Identification API Error:', error);
-
-    // Log error
-    const apiLog = new ApiLog({
-      userId: req.user._id,
-      apiName,
-      requestBody: { filename: req?.file?.originalname },
-      responseBody: { error: error.message },
-      statusCode: error.response?.status || 500,
-      ipAddress: req.ip,
-      userAgent: req.get('user-agent'),
-      executionTime: Date.now() - startTime,
-      creditsUsed: 0
-    });
-    await apiLog.save();
-
     res.status(error.response?.status || 500).json({
       success: false,
       message: error.response?.data?.detail || 'Error processing document',
@@ -107,14 +140,10 @@ exports.panSignatureExtraction = async (req, res) => {
   const apiName = 'pan-signature-extraction';
 
   try {
-    // Get user from middleware
     const user = await User.findById(req.user._id);
-    
-    // Get API documentation to check credit cost
     const apiDoc = getApiDocumentation('id_card', apiName);
     const creditCost = apiDoc?.pricing?.credits || 1;
 
-    // Check if user has enough credits
     if (user.credits < creditCost) {
       return res.status(403).json({
         success: false,
@@ -122,7 +151,6 @@ exports.panSignatureExtraction = async (req, res) => {
       });
     }
 
-    // Check if file exists in request
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -130,14 +158,13 @@ exports.panSignatureExtraction = async (req, res) => {
       });
     }
 
-    // Create FormData for Cloud Run request
     const formData = new FormData();
     formData.append('image', req.file.buffer, {
       filename: req.file.originalname,
       contentType: req.file.mimetype
     });
 
-    // Forward request to Cloud Run with responseType: arraybuffer
+    // Make API call first to ensure it succeeds
     const cloudRunResponse = await axios.post(
       `${CLOUD_RUN_URL}/pan-signature-extraction`,
       formData,
@@ -145,15 +172,14 @@ exports.panSignatureExtraction = async (req, res) => {
         headers: {
           ...formData.getHeaders()
         },
-        responseType: 'arraybuffer'  // Important for binary response
+        responseType: 'arraybuffer'
       }
     );
 
-    // Deduct credits
-    user.credits -= creditCost;
-    await user.save();
+    // Handle credits and create transaction
+    const remainingCredits = await handleCreditsAndTransaction(user, apiName, creditCost);
 
-    // Log the API call
+    // Log API call
     const apiLog = new ApiLog({
       userId: user._id,
       apiName,
@@ -167,27 +193,13 @@ exports.panSignatureExtraction = async (req, res) => {
     });
     await apiLog.save();
 
-    // Set response headers and send binary data
+    // Set response headers and send image
     res.set('Content-Type', 'image/png');
+    res.set('X-Credits-Remaining', remainingCredits.toString());
     res.send(cloudRunResponse.data);
 
   } catch (error) {
     console.error('PAN Signature Extraction API Error:', error);
-
-    // Log error
-    const apiLog = new ApiLog({
-      userId: req.user._id,
-      apiName,
-      requestBody: { filename: req?.file?.originalname },
-      responseBody: { error: error.message },
-      statusCode: error.response?.status || 500,
-      ipAddress: req.ip,
-      userAgent: req.get('user-agent'),
-      executionTime: Date.now() - startTime,
-      creditsUsed: 0
-    });
-    await apiLog.save();
-
     res.status(error.response?.status || 500).json({
       success: false,
       message: error.response?.data?.detail || 'Error extracting signature',

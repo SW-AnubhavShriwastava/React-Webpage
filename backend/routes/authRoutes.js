@@ -23,6 +23,9 @@ router.route('/tokens')
 
 router.delete('/tokens/:tokenId', verifyToken, authController.deleteToken);
 
+// Transaction history routes
+router.get('/transactions', verifyToken, authController.getTransactions);
+
 // Debug log registered routes
 console.log('Routes registered:');
 router.stack.forEach((r) => {

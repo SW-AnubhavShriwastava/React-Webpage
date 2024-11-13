@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const ApiLog = require('../models/ApiLog');
 const { getApiDocumentation } = require('../../api2/src/data/documentation');
+const Transaction = require('../models/Transaction');
 
 // Define active APIs globally
 const ACTIVE_APIS = {
@@ -8,6 +9,27 @@ const ACTIVE_APIS = {
     'document-identification': true,
     'pan-signature-extraction': true  // Add this line
   };
+
+// Add this function to create transaction records for API usage
+const createApiUsageTransaction = async (userId, apiName, creditCost, currentCredits) => {
+  try {
+    const transaction = new Transaction({
+      userId,
+      type: 'DEBIT',
+      amount: creditCost,
+      description: `API Usage: ${apiName}`,
+      balance: currentCredits,
+      source: 'API_USAGE',
+      metadata: {
+        apiName
+      }
+    });
+    await transaction.save();
+  } catch (error) {
+    console.error('Error creating API usage transaction:', error);
+    // Don't throw error to prevent API failure
+  }
+};
 
 // Welcome API endpoint
 exports.welcomeApi = async (req, res) => {
@@ -41,17 +63,12 @@ exports.welcomeApi = async (req, res) => {
     };
 
     // Deduct credits and save
+    const previousCredits = user.credits;
     user.credits -= creditCost;
     await user.save();
 
-    // Update user details in localStorage through response
-    const userDetails = {
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      username: user.username,
-      credits: user.credits
-    };
+    // Create transaction record
+    await createApiUsageTransaction(user._id, apiName, creditCost, user.credits);
 
     // Log the API call
     const apiLog = new ApiLog({
@@ -71,8 +88,7 @@ exports.welcomeApi = async (req, res) => {
     res.status(200).json({
       success: true,
       data: response,
-      creditsRemaining: user.credits,
-      userDetails
+      creditsRemaining: user.credits
     });
 
   } catch (error) {

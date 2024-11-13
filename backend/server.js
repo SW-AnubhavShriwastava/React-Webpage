@@ -4,6 +4,7 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const apiRoutes = require('./routes/apiRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 const app = express();
 
@@ -14,7 +15,13 @@ connectDB();
 app.use(cors({
   origin: 'http://localhost:3000',  // Allow only localhost frontend
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'Cache-Control',
+    'Pragma',
+    'Expires'
+  ],
   credentials: true
 }));
 
@@ -24,6 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/v1', apiRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Debug endpoint
 app.get('/debug/routes', (req, res) => {

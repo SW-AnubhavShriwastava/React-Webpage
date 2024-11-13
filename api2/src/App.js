@@ -15,6 +15,7 @@ import Home from './components/Home';
 import ApiDetail from './pages/ApiDetail';
 import PrivateRoute from './components/PrivateRoute';
 import TokenManagement from './pages/TokenManagement';
+import BuyCredits from './pages/BuyCredits';
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -31,7 +32,7 @@ const router = createBrowserRouter(
         <Route path="/api/:apiName" element={<ApiDetail />} />
         <Route path="/api-documentation" element={<div>API Documentation</div>} />
         <Route path="/api-pricing" element={<div>API Pricing</div>} />
-        <Route path="/buy-credits" element={<div>Buy Credits</div>} />
+        <Route path="/buy-credits" element={<BuyCredits />} />
         <Route path="/subscriptions" element={<div>My Subscriptions</div>} />
         <Route path="/usage-insights" element={<div>Usage Insights</div>} />
         <Route path="/token-management" element={<TokenManagement />} />
