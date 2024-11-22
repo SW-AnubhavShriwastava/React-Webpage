@@ -233,6 +233,9 @@ const Navbar = () => {
     return `${type === 'CREDIT' ? '+' : '-'}${Math.abs(amount)}`;
   };
 
+  // Add console log to debug
+  console.log('User Details:', userDetails);
+
   return (
     <>
       <AppBar position="fixed" sx={{ backgroundColor: '#000000', zIndex: (theme) => theme.zIndex.drawer + 1 }}>
@@ -436,11 +439,27 @@ const Navbar = () => {
               Usage Insights
             </MenuItem>
             <MenuItem onClick={() => {
-              window.location.href = 'mailto:support@swaroop.ai';
+              navigate('/support');
               handleClose();
             }}>
               Contact Support
             </MenuItem>
+            {userDetails.isAdmin && (
+              <MenuItem onClick={() => {
+                navigate('/admin/support');
+                handleClose();
+              }}>
+                Support Admin Portal
+              </MenuItem>
+            )}
+            {userDetails.isSuperAdmin && (
+              <MenuItem onClick={() => {
+                navigate('/super-admin');
+                handleClose();
+              }}>
+                Super Admin Portal
+              </MenuItem>
+            )}
             <Divider />
             <MenuItem onClick={handleLogout} sx={{ color: '#d32f2f' }}>
               Logout

@@ -8,6 +8,8 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const WebSocket = require('ws');
 const jwt = require('jsonwebtoken');
 const http = require('http');
+const supportRoutes = require('./routes/supportRoutes');
+const superAdminRoutes = require('./routes/superAdminRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -105,7 +107,7 @@ connectDB();
 // CORS configuration
 app.use(cors({
   origin: 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type', 
     'Authorization', 
@@ -120,9 +122,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+app.use('/api/support', supportRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/v1', apiRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/super-admin', superAdminRoutes);
 
 // Debug endpoint
 app.get('/debug/routes', (req, res) => {

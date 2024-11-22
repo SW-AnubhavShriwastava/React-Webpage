@@ -113,7 +113,9 @@ exports.login = async (req, res) => {
         lastName: user.lastName,
         email: user.email,
         username: user.username,
-        credits: user.credits
+        credits: user.credits,
+        isAdmin: user.isAdmin,
+        isSuperAdmin: user.isSuperAdmin
       }
     });
   } catch (error) {
@@ -212,16 +214,18 @@ exports.resetPassword = async (req, res) => {
 
 exports.getMe = async (req, res) => {
   try {
-    const user = req.user;
+    const user = await User.findById(req.user.id).select('-password');
     res.json({
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
       username: user.username,
-      credits: user.credits
+      credits: user.credits,
+      isAdmin: user.isAdmin,
+      isSuperAdmin: user.isSuperAdmin
     });
   } catch (error) {
-    console.error('Error in getMe:', error);
+    console.error('Error fetching user details:', error);
     res.status(500).json({ message: 'Error fetching user details' });
   }
 };

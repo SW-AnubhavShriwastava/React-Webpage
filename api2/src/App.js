@@ -21,6 +21,10 @@ import Subscriptions from './pages/Subscriptions';
 import ErrorBoundary from './components/ErrorBoundary';
 import ApiDocumentation from './pages/ApiDocumentation';
 import ApiPricing from './pages/ApiPricing';
+import Support from './pages/Support';
+import AdminSupport from './pages/AdminSupport';
+import PrivateAdminRoute from './components/PrivateAdminRoute';
+import SuperAdmin from './pages/SuperAdmin';
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -45,6 +49,19 @@ const router = createBrowserRouter(
         } />
         <Route path="/usage-insights" element={<UsageInsights />} />
         <Route path="/token-management" element={<TokenManagement />} />
+        <Route path="/support" element={<Support />} />
+        <Route element={<PrivateAdminRoute />}>
+          <Route path="/admin/support" element={
+            <ErrorBoundary>
+              <AdminSupport />
+            </ErrorBoundary>
+          } />
+        </Route>
+        <Route path="/super-admin" element={
+          <ErrorBoundary>
+            <SuperAdmin />
+          </ErrorBoundary>
+        } />
       </Route>
     </>
   ),

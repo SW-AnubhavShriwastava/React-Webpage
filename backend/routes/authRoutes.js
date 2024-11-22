@@ -201,6 +201,19 @@ router.delete('/api-subscriptions/:apiName', verifyToken, async (req, res) => {
   }
 });
 
+// Add this route
+router.get('/check-super-admin', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    res.json({ 
+      isAdmin: user?.isAdmin || false,
+      isSuperAdmin: user?.isSuperAdmin || false 
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error checking admin status' });
+  }
+});
+
 module.exports = router;
 
 
