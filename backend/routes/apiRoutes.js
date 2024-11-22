@@ -7,6 +7,8 @@ const verifyToken = require('../middleware/authMiddleware');
 const authController = require('../controllers/authController');
 const ApiLog = require('../models/ApiLog');
 const Transaction = require('../models/Transaction');
+const Subscription = require('../models/Subscription');
+const checkApiSubscription = require('../middleware/checkApiSubscription');
 
 // Configure multer for memory storage
 const upload = multer({ 
@@ -19,16 +21,61 @@ const upload = multer({
 // All routes require authentication
 router.use(verifyToken);
 
+// Add this middleware after verifyToken
+const checkSubscription = async (req, res, next) => {
+  try {
+    const apiName = req.path.substring(1); // Remove leading slash
+    const subscription = await Subscription.findOne({
+      userId: req.user.id,
+      apiName,
+      status: 'ACTIVE',
+      endDate: { $gt: new Date() }
+    });
+
+    if (!subscription && apiName !== 'welcome') {
+      return res.status(403).json({ 
+        message: 'No active subscription found for this API',
+        subscriptionRequired: true
+      });
+    }
+
+    // Check API limits if subscription exists
+    if (subscription) {
+      const apiCallsFeature = subscription.features.find(f => f.name === 'API Calls');
+      if (apiCallsFeature && apiCallsFeature.used >= apiCallsFeature.limit) {
+        return res.status(429).json({ 
+          message: 'API call limit exceeded for current subscription',
+          limitExceeded: true
+        });
+      }
+
+      // Increment usage counter
+      apiCallsFeature.used += 1;
+      await subscription.save();
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error checking subscription:', error);
+    next(error);
+  }
+};
+
 // Welcome API endpoint
-router.post('/welcome', apiController.welcomeApi);
+router.post('/swaroop-welcome', verifyToken, checkApiSubscription, apiController.welcomeApi);
+router.post('/welcome', verifyToken, checkApiSubscription, apiController.welcomeApi);
 
 // ID Card APIs
 router.post('/document-identification', 
+  verifyToken,
+  checkApiSubscription,
   upload.single('image'), 
   idCardController.documentIdentification
 );
 
 router.post('/pan-signature-extraction',
+  verifyToken,
+  checkApiSubscription,
   upload.single('image'),
   idCardController.panSignatureExtraction
 );
@@ -133,6 +180,44 @@ router.get('/analytics/:apiId', apiController.getApiStats);
 
 // Token deletion route
 router.delete('/auth/tokens/:tokenId', verifyToken, authController.deleteToken);
+
+// Add this route to get available APIs
+router.get('/available-apis', verifyToken, async (req, res) => {
+  try {
+    const apis = [
+      {
+        id: 'welcome',
+        title: 'Welcome API',
+        description: 'A simple welcome message API to test integration.',
+        method: 'POST',
+        version: '1.0.0',
+        pricing: { credits: 1 },
+        endpoint: '/swaroop-welcome'
+      },
+      {
+        id: 'document-identification',
+        title: 'Document Identification',
+        description: 'Identifies the type of card, its side, and determines if the image is blurry or grayscale.',
+        method: 'POST',
+        version: '1.0.0',
+        pricing: { credits: 2 }
+      },
+      {
+        id: 'pan-signature-extraction',
+        title: 'PAN Signature Extraction',
+        description: 'Extracts signature from PAN card images.',
+        method: 'POST',
+        version: '1.0.0',
+        pricing: { credits: 3 }
+      }
+    ];
+
+    res.json(apis);
+  } catch (error) {
+    console.error('Error fetching available APIs:', error);
+    res.status(500).json({ message: 'Error fetching available APIs' });
+  }
+});
 
 // Debug log registered routes
 console.log('API Routes registered:');

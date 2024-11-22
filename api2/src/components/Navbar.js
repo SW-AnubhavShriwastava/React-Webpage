@@ -128,38 +128,60 @@ const Navbar = () => {
     if (!token) return;
 
     let ws = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
 
     const connectWebSocket = () => {
-      ws = new WebSocket(`ws://localhost:5000/ws?token=${token}`);
-
-      ws.onopen = () => {
-        console.log('WebSocket Connected in Navbar');
-      };
-
-      ws.onmessage = async (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'TRANSACTION_UPDATE') {
-          await fetchUserData();
-          if (openTransactions) {
-            await fetchTransactions();
-          }
+      try {
+        if (ws) {
+          ws.close();
         }
-      };
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
+        ws = new WebSocket(`ws://localhost:5000/ws?token=${token}`);
+        const pingInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'PING' }));
+          }
+        }, 20000);
 
-      ws.onclose = () => {
-        console.log('WebSocket disconnected, attempting to reconnect...');
-        setTimeout(connectWebSocket, 3000);
-      };
+        ws.onopen = () => {
+          reconnectAttempts = 0;
+        };
+
+        ws.onmessage = async (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'TRANSACTION_UPDATE') {
+              await fetchUserData();
+              if (openTransactions) {
+                await fetchTransactions();
+              }
+            }
+          } catch (error) {
+            // Silent error handling
+          }
+        };
+
+        ws.onclose = (event) => {
+          clearInterval(pingInterval);
+          if (reconnectAttempts < maxReconnectAttempts) {
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+            setTimeout(() => {
+              reconnectAttempts++;
+              connectWebSocket();
+            }, delay);
+          }
+        };
+      } catch (error) {
+        // Silent error handling
+      }
     };
 
     connectWebSocket();
 
+    // Cleanup function
     return () => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
+      if (ws) {
         ws.close();
       }
     };

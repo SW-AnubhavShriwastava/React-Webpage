@@ -17,6 +17,8 @@ import PrivateRoute from './components/PrivateRoute';
 import TokenManagement from './pages/TokenManagement';
 import BuyCredits from './pages/BuyCredits';
 import UsageInsights from './pages/UsageInsights';
+import Subscriptions from './pages/Subscriptions';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -34,7 +36,11 @@ const router = createBrowserRouter(
         <Route path="/api-documentation" element={<div>API Documentation</div>} />
         <Route path="/api-pricing" element={<div>API Pricing</div>} />
         <Route path="/buy-credits" element={<BuyCredits />} />
-        <Route path="/subscriptions" element={<div>My Subscriptions</div>} />
+        <Route path="/subscriptions" element={
+          <ErrorBoundary>
+            <Subscriptions />
+          </ErrorBoundary>
+        } />
         <Route path="/usage-insights" element={<UsageInsights />} />
         <Route path="/token-management" element={<TokenManagement />} />
       </Route>
