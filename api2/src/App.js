@@ -19,6 +19,8 @@ import BuyCredits from './pages/BuyCredits';
 import UsageInsights from './pages/UsageInsights';
 import Subscriptions from './pages/Subscriptions';
 import ErrorBoundary from './components/ErrorBoundary';
+import ApiDocumentation from './pages/ApiDocumentation';
+import ApiPricing from './pages/ApiPricing';
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -33,8 +35,8 @@ const router = createBrowserRouter(
       <Route element={<PrivateRoute />}>
         <Route path="/home" element={<Home />} />
         <Route path="/api/:apiName" element={<ApiDetail />} />
-        <Route path="/api-documentation" element={<div>API Documentation</div>} />
-        <Route path="/api-pricing" element={<div>API Pricing</div>} />
+        <Route path="/api-documentation" element={<ApiDocumentation />} />
+        <Route path="/api-pricing" element={<ApiPricing />} />
         <Route path="/buy-credits" element={<BuyCredits />} />
         <Route path="/subscriptions" element={
           <ErrorBoundary>
