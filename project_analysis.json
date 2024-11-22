@@ -1,0 +1,66 @@
+{
+  "timestamp": "2024-11-22 15:15:49.684871",
+  "frontend": {
+    "path": "C:\\Users\\Admin\\Desktop\\React-Webpage\\api2",
+    "package_info": {
+      "name": "api2",
+      "version": "0.1.0",
+      "dependencies": {
+        "@emotion/react": "11.11.3",
+        "@emotion/styled": "11.11.0",
+        "@mui/icons-material": "5.15.6",
+        "@mui/material": "5.15.6",
+        "@testing-library/jest-dom": "5.17.0",
+        "@testing-library/react": "13.4.0",
+        "@testing-library/user-event": "13.5.0",
+        "ajv": "^8.12.0",
+        "ajv-keywords": "^5.1.0",
+        "axios": "1.6.7",
+        "react": "18.2.0",
+        "react-dom": "18.2.0",
+        "react-router-dom": "6.21.3",
+        "react-scripts": "4.0.3",
+        "react-syntax-highlighter": "15.5.0",
+        "web-vitals": "2.1.4"
+      },
+      "devDependencies": {
+        "@babel/plugin-proposal-private-property-in-object": "^7.21.11"
+      }
+    },
+    "dependencies": {},
+    "structure": {},
+    "components": [],
+    "routes": [],
+    "services": []
+  },
+  "backend": {
+    "path": "C:\\Users\\Admin\\Desktop\\React-Webpage\\backend",
+    "package_info": {
+      "name": "backend",
+      "version": "1.0.0",
+      "dependencies": {
+        "axios": "^1.7.7",
+        "bcrypt": "^5.1.1",
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.21.1",
+        "form-data": "^4.0.1",
+        "jsonwebtoken": "^9.0.2",
+        "mongoose": "^8.8.1",
+        "multer": "^1.4.5-lts.1",
+        "nodemailer": "^6.9.16",
+        "redis": "^4.7.0"
+      },
+      "devDependencies": {
+        "nodemon": "^3.1.7"
+      }
+    },
+    "dependencies": {},
+    "structure": {},
+    "routes": [],
+    "models": [],
+    "controllers": [],
+    "middleware": []
+  }
+}

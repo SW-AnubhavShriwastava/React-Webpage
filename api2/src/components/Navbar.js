@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -63,20 +63,31 @@ const Navbar = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
-  const showMessage = (message, severity = 'success') => {
+  const showMessage = useCallback((message, severity = 'success') => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
-  };
+  }, []);
 
-  // Simple function to fetch transactions
-  const fetchTransactions = async () => {
+  const fetchUserData = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get('/auth/me');
+      if (response.data) {
+        setUserDetails(response.data);
+        localStorage.setItem('userDetails', JSON.stringify(response.data));
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      showMessage('Error updating user data', 'error');
+    }
+  }, [showMessage]);
+
+  const fetchTransactions = useCallback(async () => {
     if (loading) return;
     
     try {
       setLoading(true);
       
-      // Fetch transactions
       const transactionResponse = await axiosInstance.get('/auth/transactions', {
         params: {
           page,
@@ -86,14 +97,12 @@ const Navbar = () => {
           sortOrder,
           startDate: dateRange.start || undefined,
           endDate: dateRange.end || undefined,
-          timestamp: Date.now() // Cache buster
+          timestamp: Date.now()
         }
       });
 
-      // Fetch updated user details
       const userResponse = await axiosInstance.get('/auth/me');
 
-      // Update states
       if (transactionResponse.data) {
         setTransactions(transactionResponse.data.transactions);
         setTotalTransactions(transactionResponse.data.total);
@@ -111,14 +120,50 @@ const Navbar = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [loading, page, rowsPerPage, filterType, sortBy, sortOrder, dateRange, showMessage]);
 
   // Fetch data when dialog opens or filters change
   useEffect(() => {
-    if (openTransactions) {
-      fetchTransactions();
-    }
-  }, [openTransactions, page, rowsPerPage, filterType, sortBy, sortOrder, dateRange]);
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    let ws = null;
+
+    const connectWebSocket = () => {
+      ws = new WebSocket(`ws://localhost:5000/ws?token=${token}`);
+
+      ws.onopen = () => {
+        console.log('WebSocket Connected in Navbar');
+      };
+
+      ws.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'TRANSACTION_UPDATE') {
+          await fetchUserData();
+          if (openTransactions) {
+            await fetchTransactions();
+          }
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected, attempting to reconnect...');
+        setTimeout(connectWebSocket, 3000);
+      };
+    };
+
+    connectWebSocket();
+
+    return () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
+  }, [openTransactions, fetchTransactions, fetchUserData]);
 
   // Handle manual refresh
   const handleRefreshClick = () => {
